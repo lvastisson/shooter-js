@@ -6,12 +6,15 @@ var rocketImg = document.getElementById('rocket');
 var rocketImg2 = document.getElementById('rocket2');
 var rocketImg3 = document.getElementById('rocket3');
 var enemyImg = document.getElementById('enemy');
+var enemyImg2 = document.getElementById('enemy2');
+var enemyDead = document.getElementById('enemy_dead');
 
+var enemyFrames = [enemyImg, enemyImg2];
 var rocketFrames = [rocketImg, rocketImg2, rocketImg3];
 
 var gameObjects = [
     new GameObject(0, 'Player', 200, 700, 100, 100, 0),
-    new GameObject(1, 'Enemy1', 320, 60, 100, 100, 0)
+    new GameObject(1, 'Enemy1', 320, 60, 100, 100, 2)
 ];
 
 var theGameLoop;
@@ -58,7 +61,6 @@ function initializeGame() {
 
         if(event.keyCode == 37 || event.keyCode == 65) {
             direction = 0;
-            console.log("A up");
         }
         else if(event.keyCode == 39 || event.keyCode == 68) {
             direction = 0;
@@ -113,7 +115,7 @@ function gameLoop() {
 }
 
 function spawnEnemy() {
-    gameObjects.push(new GameObject(1, 'Enemy', getRandomInt(50, 750), -50, 100, 100, 0))
+    gameObjects.push(new GameObject(1, 'Enemy', getRandomInt(50, 750), -50, 100, 100, 2))
 }
 
 function handleBullet(bulletIndex) {
@@ -133,6 +135,7 @@ function handleBullet(bulletIndex) {
         if (checkRectCollision(bullet, elem)) {
             gameObjects[bulletIndex].enabled = false;
             gameObjects[i].enabled = false;
+            gameObjects[i].dying = true;
             score++;
         }
     }
@@ -197,34 +200,42 @@ function render() {
     for (let i = 0; i < gameObjects.length; i++) {
         const elem = gameObjects[i];
         
-        if (!elem.enabled)
+        if (!elem.enabled && !elem.dying)
             continue;
 
         ctx.fillStyle = "black";
 
         switch(elem.objType) {
             case 0:
-                ctx.drawImage(playerImg, elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
+                drawImg(playerImg, elem)
                 // ctx.fillStyle = "#DDD";
                 // ctx.fillRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
                 break;
             case 1:
-                ctx.drawImage(enemyImg, elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
+                cycleAnimFrame(i);
+
+                if (!elem.dying) {
+                    drawImg(enemyFrames[gameObjects[i].animFrame], elem);
+                }
+                else {
+                    if(gameObjects[i].deathAnimLength > 0.05) {
+                        gameObjects[i].deathAnimLength -= 0.1;
+                    }
+                    else {
+                        gameObjects[i].deathAnimLength = 0;
+                        gameObjects[i].dying = false;
+                    }
+
+                    ctx.globalAlpha = gameObjects[i].deathAnimLength;
+                    drawImg(enemyDead, elem);
+                    ctx.globalAlpha = 1;
+                }  
                 // ctx.fillRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
                 break;
             case 2:
-                gameObjects[i].animStep++;
+                cycleAnimFrame(i);
 
-                if (gameObjects[i].animStep >= gameObjects[i].animSpeed) {
-                    gameObjects[i].animStep = 0;
-                    gameObjects[i].animFrame++;
-                }
-
-                if (gameObjects[i].animFrame >= gameObjects[i].framesCount) {
-                    gameObjects[i].animFrame = 0;
-                }
-
-                ctx.drawImage(rocketFrames[gameObjects[i].animFrame], elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
+                drawImg(rocketFrames[gameObjects[i].animFrame], elem);
                 // ctx.strokeStyle = 'black';
                 // ctx.fillStyle = "#13692a";
                 // ctx.fillRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
@@ -238,6 +249,23 @@ function render() {
     displayScore();
 }
 
+function drawImg(image, elem) {
+    ctx.drawImage(image, elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
+}
+
+function cycleAnimFrame(objectIndex) {
+    gameObjects[objectIndex].animStep++;
+
+    if (gameObjects[objectIndex].animStep >= gameObjects[objectIndex].animSpeed) {
+        gameObjects[objectIndex].animStep = 0;
+        gameObjects[objectIndex].animFrame++;
+    }
+
+    if (gameObjects[objectIndex].animFrame >= gameObjects[objectIndex].framesCount) {
+        gameObjects[objectIndex].animFrame = 0;
+    }
+}
+
 function callGameOver() {
     gameLoopOn = false;
     clearTimeout(theGameLoop);
@@ -246,8 +274,10 @@ function callGameOver() {
 
 function gameOver() {
     ctx.font = "30px Arial";
-    ctx.fillStyle = "red";
     ctx.textAlign = "center";
+    ctx.fillStyle = "white";
+    ctx.fillRect(300,350,200,80);
+    ctx.fillStyle = "black";
     ctx.fillText("Game Over", 400, 400);
     ctx.stroke();
 }
@@ -268,9 +298,11 @@ function getRandomInt(min, max) {
 
 function GameObject(objTypeIndex, objName, x, y, width, height, framesCount) {
     this.enabled = true;
+    this.dying = false;
     this.animFrame = 0;
     this.animStep = 0;
     this.animSpeed = 10;
+    this.deathAnimLength = 1;
     this.framesCount = framesCount;
     this.objType = objTypeIndex;
     this.name = objName;
