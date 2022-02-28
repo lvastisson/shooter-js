@@ -2,7 +2,7 @@ var c = document.querySelector("#myCanvas");
 var ctx = c.getContext("2d");
 
 var gameObjects = [
-    new GameObject(0, 'Player', 200, 600, 100, 100),
+    new GameObject(0, 'Player', 200, 700, 100, 100),
     new GameObject(1, 'Enemy1', 320, 60, 100, 100),
     new GameObject(1, 'Enemy2', 200, 70, 100, 100),
     new GameObject(1, 'Enemy3', 450, 80, 100, 100),
@@ -10,6 +10,9 @@ var gameObjects = [
 ];
 
 var theGameLoop;
+var gameLoopOn = true;
+
+var direction = 0;
 
 function make2DArray(cols, rows) {
     let arr = new Array(cols);
@@ -19,8 +22,31 @@ function make2DArray(cols, rows) {
     return arr;
 }
 
+function runGame() {
+    initializeGame();
+    gameLoop();
+}
+
 function initializeGame() {
-    
+    document.addEventListener('keydown', function(event) {
+        if(event.keyCode == 37 || direction == -1) {
+            gameObjects[0].xCoord -= 10;
+            direction == -1;
+        }
+        else if(event.keyCode == 39 || direction == 1) {
+            gameObjects[0].xCoord += 10;
+            direction == 1;
+        }
+    });
+
+    document.addEventListener('keyup', function(event) {
+        if(event.keyCode == 37) {
+            direction == 0;
+        }
+        else if(event.keyCode == 39) {
+            direction == 0;
+        }
+    });
 }
 
 function gameLoop() {
@@ -38,7 +64,8 @@ function gameLoop() {
     render();
 
     clearTimeout(theGameLoop);
-    theGameLoop = setTimeout(gameLoop, 50);
+    if (gameLoopOn)
+        theGameLoop = setTimeout(gameLoop, 50);
 }
 
 function handlePlayerCollision(playerIndex) {
@@ -53,6 +80,9 @@ function handlePlayerCollision(playerIndex) {
         
         if (checkRectCollision(player, elem)) {
             console.log("player collided with: " + elem.name);
+            gameLoopOn = false;
+            clearTimeout(theGameLoop);
+            setTimeout(gameOver, 100);
         }
     }
 }
@@ -99,6 +129,14 @@ function render() {
                 break;
         }
     }
+}
+
+function gameOver() {
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "red";
+    ctx.textAlign = "center";
+    ctx.fillText("Game Over", 400, 400);
+    ctx.stroke();
 }
 
 function getRandomInt(min, max) {
