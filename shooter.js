@@ -3,16 +3,18 @@ var ctx = c.getContext("2d");
 
 var gameObjects = [
     new GameObject(0, 'Player', 200, 700, 100, 100),
-    new GameObject(1, 'Enemy1', 320, 60, 100, 100),
-    new GameObject(1, 'Enemy2', 200, 70, 100, 100),
-    new GameObject(1, 'Enemy3', 450, 80, 100, 100),
-    new GameObject(2, 'Bullet', 400, 700, 20, 60)
+    new GameObject(1, 'Enemy1', 320, 60, 100, 100)
 ];
 
 var theGameLoop;
 var gameLoopOn = true;
+var score = 0;
+var lastSpawned = 50;
+var spawnDelay = 50;
 
 var direction = 0;
+var shootReady = 0;
+var shot = false;
 
 function make2DArray(cols, rows) {
     let arr = new Array(cols);
@@ -29,34 +31,68 @@ function runGame() {
 
 function initializeGame() {
     document.addEventListener('keydown', function(event) {
-        if(event.keyCode == 37 || direction == -1) {
-            gameObjects[0].xCoord -= 10;
-            direction == -1;
+        if(event.keyCode == 37 || event.keyCode == 65) {
+            event.preventDefault();
+            direction = -1;
         }
-        else if(event.keyCode == 39 || direction == 1) {
-            gameObjects[0].xCoord += 10;
-            direction == 1;
+        else if(event.keyCode == 39 || event.keyCode == 68) {
+            event.preventDefault();
+            direction = 1;
+        }
+        if(event.keyCode == 32 && shootReady == 0) {
+            event.preventDefault();
+            shootReady = 1;
         }
     });
 
     document.addEventListener('keyup', function(event) {
-        if(event.keyCode == 37) {
-            direction == 0;
+        event.preventDefault();
+
+        if(event.keyCode == 37 || event.keyCode == 65) {
+            direction = 0;
+            console.log("A up");
         }
-        else if(event.keyCode == 39) {
-            direction == 0;
+        else if(event.keyCode == 39 || event.keyCode == 68) {
+            direction = 0;
+        }
+        if(event.keyCode == 32) {
+            shootReady = 0;
+            shot = false;
         }
     });
 }
 
 function gameLoop() {
+    lastSpawned--;
+
+    if (lastSpawned <= 0) {
+        spawnEnemy();
+
+        lastSpawned = spawnDelay;
+
+        if (spawnDelay > 1)
+            spawnDelay--;
+    }
+
+    if (shootReady == 1 && !shot) {
+        shoot();
+        shot = true;
+    }
+
     for (let i = 0; i < gameObjects.length; i++) {
+        if (!gameObjects[i].enabled)
+            continue;
+
         switch (gameObjects[i].objType) {
             case 0:
                 handlePlayerCollision(i);
+                gameObjects[0].xCoord += 20 * direction;
                 break;
             case 1:
                 handleEnemy(i);
+                break;
+            case 2:
+                handleBullet(i);
                 break;
         }
     }
@@ -68,6 +104,32 @@ function gameLoop() {
         theGameLoop = setTimeout(gameLoop, 50);
 }
 
+function spawnEnemy() {
+    gameObjects.push(new GameObject(1, 'Enemy', getRandomInt(50, 750), -50, 100, 100))
+}
+
+function handleBullet(bulletIndex) {
+    gameObjects[bulletIndex].yCoord -= 20;
+
+    const bullet = gameObjects[bulletIndex];
+
+    if (bullet.yCoord < -100)
+        gameObjects[bulletIndex].enabled = false;
+
+    for (let i = 0; i < gameObjects.length; i++) {
+        const elem = gameObjects[i];
+
+        if (elem.objType == 0 || elem.objType == 2 || !elem.enabled)
+            continue;
+
+        if (checkRectCollision(bullet, elem)) {
+            gameObjects[bulletIndex].enabled = false;
+            gameObjects[i].enabled = false;
+            score++;
+        }
+    }
+}
+
 function handlePlayerCollision(playerIndex) {
 
     const player = gameObjects[playerIndex];
@@ -77,14 +139,19 @@ function handlePlayerCollision(playerIndex) {
             continue;
 
         const elem = gameObjects[i];
-        
+
+        if (!elem.enabled)
+            continue;
+
         if (checkRectCollision(player, elem)) {
             console.log("player collided with: " + elem.name);
-            gameLoopOn = false;
-            clearTimeout(theGameLoop);
-            setTimeout(gameOver, 100);
+            callGameOver();
         }
     }
+}
+
+function shoot() {
+    gameObjects.push(new GameObject(2, 'Bullet', gameObjects[0].xCoord, gameObjects[0].yCoord - 100, 20, 60));
 }
 
 function checkRectCollision(obj1, obj2) {
@@ -101,9 +168,17 @@ function checkRectCollision(obj1, obj2) {
 }
 
 function handleEnemy(enemyIndex) {
-    let i = enemyIndex;
+    enemy = gameObjects[enemyIndex];
 
-    gameObjects[i].yCoord+=5;
+    if (!enemy.enabled)
+        return;
+
+    enemy.yCoord += 5;
+
+    if (enemy.yCoord > 800) {
+        callGameOver();
+        gameObjects[enemyIndex].enabled = false;
+    }
 }
 
 function render() {
@@ -112,8 +187,14 @@ function render() {
     for (let i = 0; i < gameObjects.length; i++) {
         const elem = gameObjects[i];
         
+        if (!elem.enabled)
+            continue;
+
+        ctx.fillStyle = "black";
+
         switch(elem.objType) {
             case 0:
+                ctx.fillStyle = "#203b8c";
                 ctx.fillRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
                 ctx.stroke();
                 break;
@@ -122,13 +203,22 @@ function render() {
                 ctx.stroke();
                 break;
             case 2:
-                ctx.strokeStyle = '#FF0000';
+                ctx.strokeStyle = 'black';
+                ctx.fillStyle = "#13692a";
                 ctx.fillRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
                 ctx.strokeRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
                 ctx.stroke();
                 break;
         }
     }
+
+    displayScore();
+}
+
+function callGameOver() {
+    gameLoopOn = false;
+    clearTimeout(theGameLoop);
+    setTimeout(gameOver, 100);
 }
 
 function gameOver() {
@@ -139,6 +229,14 @@ function gameOver() {
     ctx.stroke();
 }
 
+function displayScore() {
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#ba3f9d";
+    ctx.textAlign = "left";
+    ctx.fillText("Score: " + score, 0, 20);
+    ctx.stroke();
+}
+
 function getRandomInt(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
@@ -146,6 +244,7 @@ function getRandomInt(min, max) {
 }
 
 function GameObject(objTypeIndex, objName, x, y, width, height) {
+    this.enabled = true;
     this.objType = objTypeIndex;
     this.name = objName;
     this.xCoord = x;
