@@ -8,9 +8,15 @@ var rocketImg3 = document.getElementById('rocket3');
 var enemyImg = document.getElementById('enemy');
 var enemyImg2 = document.getElementById('enemy2');
 var enemyDead = document.getElementById('enemy_dead');
+var explosion1 = document.getElementById('explosion1');
+var explosion2 = document.getElementById('explosion2');
+var explosion3 = document.getElementById('explosion3');
+var explosion4 = document.getElementById('explosion4');
+var explosion5 = document.getElementById('explosion5');
 
 var enemyFrames = [enemyImg, enemyImg2];
 var rocketFrames = [rocketImg, rocketImg2, rocketImg3];
+var explosionFrames = [explosion1, explosion2, explosion3, explosion4, explosion5];
 
 var gameObjects = [
     new GameObject(0, 'Player', 200, 700, 100, 100, 0),
@@ -134,6 +140,7 @@ function handleBullet(bulletIndex) {
 
         if (checkRectCollision(bullet, elem)) {
             gameObjects[bulletIndex].enabled = false;
+            gameObjects[bulletIndex].dying = true;
             gameObjects[i].enabled = false;
             gameObjects[i].dying = true;
             score++;
@@ -218,15 +225,15 @@ function render() {
                     drawImg(enemyFrames[gameObjects[i].animFrame], elem);
                 }
                 else {
-                    if(gameObjects[i].deathAnimLength > 0.05) {
-                        gameObjects[i].deathAnimLength -= 0.1;
+                    if(gameObjects[i].animParameter1 > 0.05) {
+                        gameObjects[i].animParameter1 -= 0.1;
                     }
                     else {
-                        gameObjects[i].deathAnimLength = 0;
+                        gameObjects[i].animParameter1 = 0;
                         gameObjects[i].dying = false;
                     }
 
-                    ctx.globalAlpha = gameObjects[i].deathAnimLength;
+                    ctx.globalAlpha = gameObjects[i].animParameter1;
                     drawImg(enemyDead, elem);
                     ctx.globalAlpha = 1;
                 }  
@@ -235,7 +242,19 @@ function render() {
             case 2:
                 cycleAnimFrame(i);
 
-                drawImg(rocketFrames[gameObjects[i].animFrame], elem);
+                if (!elem.dying) {
+                    drawImg(rocketFrames[gameObjects[i].animFrame], elem);
+                }
+                else {
+                    if (gameObjects[i].animParameter1 < 5) {
+                        gameObjects[i].animParameter1++;
+                    }
+                    else {
+                        gameObjects[i].dying = false;
+                    }
+
+                    ctx.drawImage(explosionFrames[gameObjects[i].animParameter1 - 2], elem.xCoord - 25, elem.yCoord - 25, 50, 50);
+                }
                 // ctx.strokeStyle = 'black';
                 // ctx.fillStyle = "#13692a";
                 // ctx.fillRect(elem.xCoord - (elem.objWidth / 2), elem.yCoord - (elem.objHeight / 2), elem.objWidth, elem.objHeight);
@@ -302,7 +321,7 @@ function GameObject(objTypeIndex, objName, x, y, width, height, framesCount) {
     this.animFrame = 0;
     this.animStep = 0;
     this.animSpeed = 10;
-    this.deathAnimLength = 1;
+    this.animParameter1 = 1;
     this.framesCount = framesCount;
     this.objType = objTypeIndex;
     this.name = objName;
