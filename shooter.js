@@ -18,9 +18,12 @@ var enemyFrames = [enemyImg, enemyImg2];
 var rocketFrames = [rocketImg, rocketImg2, rocketImg3];
 var explosionFrames = [explosion1, explosion2, explosion3, explosion4, explosion5];
 
+var areaWidth = 800;
+var areaHeight = 800;
+
 var gameObjects = [
-    new GameObject(0, 'Player', 200, 700, 100, 100, 0),
-    new GameObject(1, 'Enemy1', 320, 60, 100, 100, 2)
+    new GameObject(0, 'Player', areaWidth / 2, areaHeight - 100, 100, 100, 0),
+    new GameObject(1, 'Enemy1', areaWidth / 2, 60, 100, 100, 2)
 ];
 
 var theGameLoop;
@@ -28,6 +31,9 @@ var gameLoopOn = true;
 var score = 0;
 var lastSpawned = 50;
 var spawnDelay = 50;
+var enemySpeed = 5;
+var lastIncreasedSpeed = 5;
+var speedIncreaseDelay = 5;
 
 var direction = 0;
 var shootReady = 0;
@@ -86,8 +92,18 @@ function gameLoop() {
 
         lastSpawned = spawnDelay;
 
-        if (spawnDelay > 1)
+        if (spawnDelay > 30) {
             spawnDelay--;
+        }
+        else {
+            lastIncreasedSpeed--;
+
+            if (lastIncreasedSpeed <= 0) {
+                enemySpeed++;
+
+                lastIncreasedSpeed = speedIncreaseDelay;
+            }
+        }
     }
 
     if (shootReady == 1 && !shot) {
@@ -102,7 +118,7 @@ function gameLoop() {
         switch (gameObjects[i].objType) {
             case 0:
                 handlePlayerCollision(i);
-                gameObjects[0].xCoord += 20 * direction;
+                handlePlayerMovement(i);
                 break;
             case 1:
                 handleEnemy(i);
@@ -121,7 +137,7 @@ function gameLoop() {
 }
 
 function spawnEnemy() {
-    gameObjects.push(new GameObject(1, 'Enemy', getRandomInt(50, 750), -50, 100, 100, 2))
+    gameObjects.push(new GameObject(1, 'Enemy', getRandomInt(50, areaWidth - 50), -50, 100, 100, 2))
 }
 
 function handleBullet(bulletIndex) {
@@ -146,6 +162,15 @@ function handleBullet(bulletIndex) {
             score++;
         }
     }
+}
+
+function handlePlayerMovement(playerIndex) {
+    gameObjects[playerIndex].xCoord += 20 * direction;
+
+    if (gameObjects[playerIndex].xCoord < 0)
+        gameObjects[playerIndex].xCoord = 0;
+    else if (gameObjects[playerIndex].xCoord > areaWidth)
+        gameObjects[playerIndex].xCoord = areaWidth;
 }
 
 function handlePlayerCollision(playerIndex) {
@@ -191,18 +216,18 @@ function handleEnemy(enemyIndex) {
     if (!enemy.enabled)
         return;
 
-    enemy.yCoord += 5;
+    enemy.yCoord += enemySpeed;
 
-    if (enemy.yCoord > 800) {
+    if (enemy.yCoord > areaHeight) {
         callGameOver();
         gameObjects[enemyIndex].enabled = false;
     }
 }
 
 function render() {
-    ctx.clearRect(0, 0, 800, 800);
+    ctx.clearRect(0, 0, areaWidth, areaHeight);
 
-    ctx.drawImage(bgImg, 0, 0, 800, 800);
+    ctx.drawImage(bgImg, 0, 0, areaWidth, areaHeight);
 
     for (let i = 0; i < gameObjects.length; i++) {
         const elem = gameObjects[i];
@@ -295,9 +320,9 @@ function gameOver() {
     ctx.font = "30px Arial";
     ctx.textAlign = "center";
     ctx.fillStyle = "white";
-    ctx.fillRect(300,350,200,80);
+    ctx.fillRect((areaWidth / 2) - 100,(areaHeight / 2) - 50,200,80);
     ctx.fillStyle = "black";
-    ctx.fillText("Game Over", 400, 400);
+    ctx.fillText("Game Over", areaWidth / 2, areaHeight / 2);
     ctx.stroke();
 }
 
